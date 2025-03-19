@@ -25,7 +25,7 @@ export default function Register() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch('https://pos-backend-delta.vercel.app/api/users/create', {
+            const response = await fetch('http://localhost:5000/api/users/create', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

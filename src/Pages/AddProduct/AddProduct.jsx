@@ -27,7 +27,7 @@ const imageHosKey = '29473dd4ab78ebc95009722bc0558d38';
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get('https://pos-backend-delta.vercel.app/api/category/getCategories');
+        const response = await axios.get('http://localhost:5000/api/category/getCategories');
         setCategory(response.data.categories);
       } catch (error) {
         console.error('Error fetching products:', error);
@@ -79,7 +79,7 @@ const imageHosKey = '29473dd4ab78ebc95009722bc0558d38';
     e.preventDefault();
 
     try {
-      const response = await axios.post('https://pos-backend-delta.vercel.app/api/products/crateProduct', formData);
+      const response = await axios.post('http://localhost:5000/api/products/crateProduct', formData);
       console.log(response.data);
       toast.success(`${response.data.message}`, {
 

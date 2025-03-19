@@ -11,15 +11,35 @@ import axios from "axios";
 
 export default function SingleCustomerProductDetails() {
   const data = useLoaderData();
-  const customer = data.data;
-  // console.log(customer.paymentStatus);
-  const calculateTax = (price, taxRate) => ((price * taxRate) / 100).toFixed(2); // Use product's tax rate
+  // Add null check for data
+  const customer = data?.data;
+
+  // If customer data is not available, show a loading state or error message
+  if (!customer) {
+    return (
+      <div>
+        <CommonTopNab />
+        <div className="container mx-auto p-4">
+          <h2 className="text-2xl font-bold mb-4">Loading data or no data available...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  const calculateTax = (price, taxRate) => ((price * taxRate) / 100).toFixed(2);
   const calculateProductTotal = (price, quantity, tax) =>
     (price * quantity + parseFloat(tax)).toFixed(2);
 
   const formatDateTime = (dateString) => {
     // Ensure the input date is a valid Date object
+    if (!dateString) return "No date available";
+    
     const date = new Date(dateString);
+    
+    // Check if date is valid before formatting
+    if (isNaN(date.getTime())) {
+      return "Invalid date";
+    }
 
     // Format the date and time for the Asia/Dhaka timezone
     return date.toLocaleString("en-US", {
@@ -34,13 +54,7 @@ export default function SingleCustomerProductDetails() {
     });
   };
 
-  // Example usage in JSX
-  <p>
-    <strong>Purchase Date:</strong> {formatDateTime(customer.purchaseDate)}
-  </p>
-
-
-  // Update grand total to consider dynamic tax rates
+  // Update grand total to consider dynamic tax rates, with proper null checks
   const grandTotal = customer.purchasedProducts?.reduce(
     (total, product) =>
       total +
@@ -48,7 +62,7 @@ export default function SingleCustomerProductDetails() {
         calculateProductTotal(
           product.p_price,
           product.quantity,
-          calculateTax(product.p_price, product.tax) // Use product.tax as percentage
+          calculateTax(product.p_price, product.tax || 0) // Default to 0 if tax is undefined
         )
       ),
     0
@@ -78,6 +92,7 @@ export default function SingleCustomerProductDetails() {
     printWindow.document.close();
     printWindow.print();
   };
+
   // Generate PDF
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
@@ -88,17 +103,17 @@ export default function SingleCustomerProductDetails() {
       align: "center",
     });
 
-    // Add customer details
+    // Add customer details with null checks
     doc.setFontSize(12);
-    doc.text(`Customer Name: ${customer.customerName}`, 10, 20);
-    doc.text(`Customer Email: ${customer.customerEmail}`, 10, 25);
-    doc.text(`Customer Phone: ${customer.customerPhone}`, 10, 30);
-    doc.text(`Customer Address: ${customer.customerAddress}`, 10, 35);
-    doc.text(`Purchase Date: ${customer.purchaseDate}`, 10, 40);
-    doc.text(`Total Items: ${customer.totalItems}`, 10, 45);
-    doc.text(`Grand Total: $${grandTotal}`, 10, 50);
-    doc.text(`Customer Points: ${customer.customerPoints}`, 10, 55);
-    doc.text(`Payment Status: ${customer.paymentStatus}`, 10, 60);
+    doc.text(`Customer Name: ${customer.customerName || "N/A"}`, 10, 20);
+    doc.text(`Customer Email: ${customer.customerEmail || "N/A"}`, 10, 25);
+    doc.text(`Customer Phone: ${customer.customerPhone || "N/A"}`, 10, 30);
+    doc.text(`Customer Address: ${customer.customerAddress || "N/A"}`, 10, 35);
+    doc.text(`Purchase Date: ${formatDateTime(customer.purchaseDate || customer.createdAt)}`, 10, 40);
+    doc.text(`Total Items: ${customer.totalItems || 0}`, 10, 45);
+    doc.text(`Grand Total: $${grandTotal || 0}`, 10, 50);
+    doc.text(`Customer Points: ${customer.customerPoints || 0}`, 10, 55);
+    doc.text(`Payment Status: ${customer.paymentStatus || "Pending"}`, 10, 60);
 
     // Add purchased products table
     const tableColumnHeaders = [
@@ -115,20 +130,20 @@ export default function SingleCustomerProductDetails() {
     ];
 
     const tableRows = customer?.purchasedProducts?.map((product, index) => {
-      const tax = calculateTax(product.p_price, product.tax);
+      const tax = calculateTax(product.p_price, product.tax || 0);
       return [
         index + 1,
-        product.p_name,
-        product.p_code,
-        product.p_category,
-        product.p_brand,
-        `${product.p_price}`,
-        product.quantity,
-        `${product.tax}%`,
-        `${tax * product.quantity}`,
-        `${tax * product.quantity + product.p_price * product.quantity}`,
+        product.p_name || "N/A",
+        product.p_code || "N/A",
+        product.p_category || "N/A",
+        product.p_brand || "N/A",
+        `${product.p_price || 0}`,
+        product.quantity || 0,
+        `${product.tax || 0}%`,
+        `${(tax * (product.quantity || 0)).toFixed(2)}`,
+        `${((tax * (product.quantity || 0)) + ((product.p_price || 0) * (product.quantity || 0))).toFixed(2)}`,
       ];
-    });
+    }) || [];
 
     doc.autoTable({
       startY: 70,
@@ -137,12 +152,13 @@ export default function SingleCustomerProductDetails() {
     });
 
     // Save the PDF
-    doc.save(`${customer.customerName}-purchased-products.pdf`);
+    doc.save(`${customer.customerName || "customer"}-purchased-products.pdf`);
   };
+
   const handlePaymentConfirmation = async () => {
     try {
       // Fetch all products
-      const productsResponse = await axios.get("https://pos-backend-delta.vercel.app/api/products/getProduct");
+      const productsResponse = await axios.get("http://localhost:5000/api/products/getProduct");
       console.log("Products API Response:", productsResponse);
 
       // Extract products array from response
@@ -155,7 +171,7 @@ export default function SingleCustomerProductDetails() {
       console.log("Purchased Products:", customer.purchasedProducts);
 
       // Process each purchased product
-      for (const purchasedProduct of customer.purchasedProducts) {
+      for (const purchasedProduct of customer.purchasedProducts || []) {
         const matchingProduct = allProducts.find(
           (product) => product.p_code === purchasedProduct.p_code
         );
@@ -171,7 +187,7 @@ export default function SingleCustomerProductDetails() {
           }
 
           // Update product quantity in the database
-          await axios.put(`https://pos-backend-delta.vercel.app/api/products/update/${matchingProduct._id}`, {
+          await axios.put(`http://localhost:5000/api/products/update/${matchingProduct._id}`, {
             p_quantity: updatedQuantity,
           });
         } else {
@@ -181,7 +197,7 @@ export default function SingleCustomerProductDetails() {
       }
 
       // Update payment status
-      await axios.put(`https://pos-backend-delta.vercel.app/api/customerProduct/update/${customer._id}`, {
+      await axios.put(`http://localhost:5000/api/customerProduct/update/${customer._id}`, {
         paymentStatus: "paid",
       });
 
@@ -194,8 +210,6 @@ export default function SingleCustomerProductDetails() {
       toast.error("Failed to confirm payment. Please try again.");
     }
   };
-
-
 
   return (
     <div>
@@ -221,33 +235,32 @@ export default function SingleCustomerProductDetails() {
         <div id="print-area" className="container mx-auto p-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold mb-4">Sell Details</h2>
-            
           </div>
 
           <div className="bg-gray-100 p-4 rounded shadow-md">
             <p>
-              <strong>Name:</strong> {customer.customerName}
+              <strong>Name:</strong> {customer.customerName || "N/A"}
             </p>
             <p>
-              <strong>Email:</strong> {customer.customerEmail}
+              <strong>Email:</strong> {customer.customerEmail || "N/A"}
             </p>
             <p>
-              <strong>Phone:</strong> {customer.customerPhone}
+              <strong>Phone:</strong> {customer.customerPhone || "N/A"}
             </p>
             <p>
-              <strong>Address:</strong> {customer.customerAddress}
+              <strong>Address:</strong> {customer.customerAddress || "N/A"}
             </p>
             <p>
-              <strong>Purchase Date:</strong> {formatDateTime(customer.createdAt)}
+              <strong>Purchase Date:</strong> {formatDateTime(customer.purchaseDate || customer.createdAt)}
             </p>
             <p>
-              <strong>Total Items:</strong> {customer.totalItems}
+              <strong>Total Items:</strong> {customer.totalItems || 0}
             </p>
             <p>
-              <strong>Grand Total:</strong> ${customer.grandTotal}
+              <strong>Grand Total:</strong> ${customer.grandTotal || 0}
             </p>
             <p>
-              <strong>Customer Points:</strong> {customer.customerPoints}
+              <strong>Customer Points:</strong> {customer.customerPoints || 0}
             </p>
             <div className="flex items-center gap-3"><strong>Payment Status:</strong>
               <div className="w-24 text-center">{customer.paymentStatus === "" ? <p className='text-yellow-500 px-2 py-1 rounded-lg'>Pending...</p> : <p className=' px-2 py-1 rounded-lg bg-green-500 text-white'>Paid</p>}</div>
@@ -282,7 +295,7 @@ export default function SingleCustomerProductDetails() {
               <tbody>
                 {customer?.purchasedProducts?.length > 0 ? (
                   customer?.purchasedProducts?.map((product, index) => {
-                    const tax = calculateTax(product.p_price, product.tax); // Use product.tax
+                    const tax = calculateTax(product.p_price, product.tax || 0); // Default to 0 if tax is undefined
                     return (
                       <tr key={index} className="text-center">
                         <td className="border border-gray-300 px-4 py-2">{index + 1}</td>
@@ -292,9 +305,9 @@ export default function SingleCustomerProductDetails() {
                         <td className="border border-gray-300 px-4 py-2">{product.p_brand}</td>
                         <td className="border border-gray-300 px-4 py-2">${product.p_price}</td>
                         <td className="border border-gray-300 px-4 py-2">{product.quantity}</td>
-                        <td className="border border-gray-300 px-4 py-2">%{product.tax}</td> {/* Display tax rate */}
-                        <td className="border border-gray-300 px-4 py-2">${tax * product.quantity}</td>
-                        <td className="border border-gray-300 px-4 py-2">${(product.p_price * product.quantity + tax * product.quantity)}</td>
+                        <td className="border border-gray-300 px-4 py-2">%{product.tax || 0}</td>
+                        <td className="border border-gray-300 px-4 py-2">${(tax * product.quantity).toFixed(2)}</td>
+                        <td className="border border-gray-300 px-4 py-2">${(product.p_price * product.quantity + tax * product.quantity).toFixed(2)}</td>
                       </tr>
                     );
                   })
@@ -308,11 +321,8 @@ export default function SingleCustomerProductDetails() {
               </tbody>
             </table>
           </div>
-
-
         </div>
       </div>
-
     </div>
   );
 }

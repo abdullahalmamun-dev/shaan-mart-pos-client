@@ -54,7 +54,7 @@ const routes = createBrowserRouter([
                 path: '/singleCustomerList/:id',
                 element:<SingleCustomerProductDetails/>,
                 loader:async ({params}) =>{
-                    return fetch(`https://pos-backend-delta.vercel.app/api/customerProduct/single/${params?.id}`)
+                    return fetch(`http://localhost:5000/api/customerProduct/single/${params?.id}`)
                 }
             },
             {

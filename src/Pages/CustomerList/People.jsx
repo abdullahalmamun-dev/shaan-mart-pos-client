@@ -5,7 +5,7 @@ import FinalLoader from './../../Shared/Loader/FinalLoader';
 
 export default function People() {
     const { data: categoriesData, isLoading: tableLoading } = useGetData(
-        "https://pos-backend-delta.vercel.app/api/customerProduct/getAllCustomerProducts"
+        "http://localhost:5000/api/customerProduct/getAllCustomerProducts"
     );
 
     const [filter, setFilter] = useState("");

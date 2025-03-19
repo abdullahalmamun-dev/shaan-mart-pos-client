@@ -44,7 +44,7 @@ export default function MyProfile() {
         const fetchData = async () => {
             try {
                 setIsLoading(true);
-                const response = await axios.get(`https://pos-backend-delta.vercel.app/api/users/${id}`);
+                const response = await axios.get(`http://localhost:5000/api/users/${id}`);
                 setUser(response.data);
                 setFormData(response.data); // Populate form with fetched data
             } catch (err) {
@@ -83,7 +83,7 @@ export default function MyProfile() {
     setLoading1(true);
     try {
         const response = await axios.put(
-            `https://pos-backend-delta.vercel.app/api/users/update/${id}`,
+            `http://localhost:5000/api/users/update/${id}`,
             formData
         );
         toast.success(response.data.message);
@@ -124,7 +124,7 @@ export default function MyProfile() {
         }
 
         try {
-            const response = await axios.put(`https://pos-backend-delta.vercel.app/api/users/update/${id}`, {
+            const response = await axios.put(`http://localhost:5000/api/users/update/${id}`, {
                 password: newPassword,
                 currentPassword, // Include current password for backend verification
             });
